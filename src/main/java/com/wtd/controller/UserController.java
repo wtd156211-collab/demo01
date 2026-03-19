@@ -15,33 +15,41 @@ public class UserController {
      * @return
      */
     @GetMapping("/{id}")
-    public Result getUserInfo(@PathVariable("id") Long id) {
-        return new Result("200", "获取成功，正在查询ID为" + id + "的用户信息");
+    public Result<String> getUserInfo(@PathVariable("id") Long id) {
+        log.info("正在查询ID为" + id + "的用户信息");
+        String data="获取成功，正在查询ID为" + id + "的用户信息";
+        return Result.success(data);
     }
     /**
      * 新增用户
      * @return
      */
     @PostMapping
-    public Result addUser(@RequestBody User user) {
-        return new Result("200", "新增成功,接收到用户信息:" + user.toString());
+    public Result<String> addUser(@RequestBody User user) {
+        log.info("接收到用户信息:" + user.toString());
+        String data="新增成功,接收到用户信息:" + user.toString();
+        return Result.success(data);
     }
     /**
      * 全量更新用户信息
      * @return
      */
      @PutMapping("/{id}")
-    public Result updateUser(@PathVariable Long id, @RequestBody User user) {
-        return new Result("200", "更新成功,ID为" + id + "的用户信息已更新为:" + user.toString());
+    public Result<String> updateUser(@PathVariable Long id, @RequestBody User user) {
+         log.info("正在更新ID为" + id + "的用户信息");
+         String data="更新成功,ID为" + id + "的用户信息已更新为:" + user.toString();
+        return Result.success(data);
     }
     /**
      * 删除用户信息
      * @return
      */
     @DeleteMapping("/{id}")
-    public Result deleteUser(@PathVariable Long id) {
+    public Result<String> deleteUser(@PathVariable Long id) {
         int i = 1 / 0;
         log.info("测试异常处理");
-        return new Result("200", "删除成功,ID为" + id + "的用户信息已删除");
+        log.info("正在删除ID为" + id + "的用户信息");
+        String data="删除成功,ID为" + id + "的用户信息已删除";
+        return Result.success(data);
     }
 }

@@ -6,24 +6,25 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class Result {
-    private String code;
+@AllArgsConstructor
+public class Result<T> {
+    private Integer code;
     private String msg;
-    private Object data;
+    private T data;
 
-    public Result(String code, String msg, Object data) {
-        this.code = code;
-        this.msg = msg;
-        this.data = data;
+    public static <T> Result<T> success(T data) {
+        Result<T> result = new Result<>();
+        result.code=ResultCode.SUCCESS.getCode();
+        result.msg=ResultCode.SUCCESS.getMsg();
+        result.data=data;
+        return result;
     }
-    public Result(String code, String msg) {
-        this.code = code;
-        this.msg = msg;
-    }
-    public Result success() {
-        return new Result("0", "success", null);
-    }
-    public Result error(Object data) {
-        return new Result("1", "error", data);
+
+    public static <T> Result<T> error(ResultCode resultcode) {
+        Result<T> result = new Result<>();
+        result.code= resultcode.getCode();
+        result.msg= resultcode.getMsg();
+        result.data=null;
+        return result;
     }
 }
