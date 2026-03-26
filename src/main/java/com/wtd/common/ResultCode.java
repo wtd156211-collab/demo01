@@ -7,7 +7,10 @@ public enum ResultCode {
     //参数异常
     PARAM_ERROR(400, "参数异常"),
     //服务端异常
-    SERVER_ERROR(500, "服务端异常");
+    SERVER_ERROR(500, "服务端异常"),
+    USER_HAS_EXISTED(4001, "用户已存在"),
+    USER_NOT_EXIST(4002, "用户不存在"),
+    PASSWORD_ERROR(4003, "账号或密码错误");
 
     private final Integer code;
     private final String msg;

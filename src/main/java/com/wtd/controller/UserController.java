@@ -1,14 +1,20 @@
 package com.wtd.controller;
 
 import com.wtd.common.Result;
+import com.wtd.dto.UserDTO;
 import com.wtd.entity.User;
+import com.wtd.service.UserService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
+
+    @Autowired
+    private UserService userService;
 
     /**
      * 获取用户信息
@@ -25,9 +31,10 @@ public class UserController {
      * @return
      */
     @PostMapping
-    public Result<String> addUser(@RequestBody User user) {
-        log.info("接收到用户信息:" + user.toString());
-        String data="新增成功,接收到用户信息:" + user.toString();
+    public Result<String> addUser(@RequestBody UserDTO user) {
+        log.info("接收到用户信息:" + user.getUsername() + " " + user.getPassword());
+        userService.addUser(user);
+        String data="新增成功,接收到用户信息:" + user.getUsername() + " " + user.getPassword();
         return Result.success(data);
     }
     /**
@@ -51,5 +58,16 @@ public class UserController {
         log.info("正在删除ID为" + id + "的用户信息");
         String data="删除成功,ID为" + id + "的用户信息已删除";
         return Result.success(data);
+    }
+    /**
+     * 用户登录
+     * @return
+     */
+    @PostMapping("/login")
+    public Result<String> login(@RequestBody UserDTO user) {
+        log.info("接收到用户登录信息:" + user.getUsername() + " " + user.getPassword());
+        String data="登录成功,接收到用户登录信息:" + user.getUsername() + " " + user.getPassword();
+        String token = userService.login(user);
+        return Result.success(token);
     }
 }

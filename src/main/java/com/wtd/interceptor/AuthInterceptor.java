@@ -12,9 +12,9 @@ public class AuthInterceptor implements HandlerInterceptor {
         String uri = request.getRequestURI();
 
         boolean isCreateUser = "POST".equals(method) && "/api/users".equals(uri);
-        boolean isGetUser = "GET".equals(method) && uri.startsWith("/api/users");
+//        boolean isGetUser = "GET".equals(method) && uri.startsWith("/api/users");
 
-        if(isCreateUser || isGetUser){
+        if(isCreateUser){
             return true;
         }
 
