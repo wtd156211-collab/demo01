@@ -2,6 +2,7 @@ package com.wtd.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.wtd.common.Result;
 import com.wtd.common.ResultCode;
 import com.wtd.dto.UserDTO;
 import com.wtd.entity.User;
@@ -53,5 +54,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
         return "token-" + user.getUsername() + "-" + System.currentTimeMillis();
+    }
+
+    /**
+     * 根据Id获取用户信息
+     *
+     * @param id
+     * @return
+     */
+    @Override
+    public Result<String> getUserById(Long id) {
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(User::getId, id);
+        User user = this.getOne(queryWrapper);
+        return Result.success(user.toString());
     }
 }

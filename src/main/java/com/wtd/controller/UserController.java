@@ -67,7 +67,7 @@ public class UserController {
     public Result<String> login(@RequestBody UserDTO user) {
         log.info("接收到用户登录信息:" + user.getUsername() + " " + user.getPassword());
         String data="登录成功,接收到用户登录信息:" + user.getUsername() + " " + user.getPassword();
-        String token = userService.login(user);
-        return Result.success(token);
+        userService.login(user);
+        return Result.success(data);
     }
 }

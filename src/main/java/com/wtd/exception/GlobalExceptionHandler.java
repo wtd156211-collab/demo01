@@ -14,6 +14,8 @@ public class GlobalExceptionHandler {
         if (e instanceof ArithmeticException) {
             return Result.error(ResultCode.PARAM_ERROR);
         }
+
+        //其他异常
         return Result.error(ResultCode.SERVER_ERROR);
     }
 }
