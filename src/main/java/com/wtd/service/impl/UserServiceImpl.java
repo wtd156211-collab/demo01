@@ -1,6 +1,7 @@
 package com.wtd.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.wtd.common.Result;
 import com.wtd.common.ResultCode;
@@ -9,10 +10,14 @@ import com.wtd.entity.User;
 import com.wtd.mapper.UserMapper;
 import com.wtd.service.UserService;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
+
+    @Autowired
+    private UserMapper userMapper;
 
     /**
      * 新增用户
@@ -68,5 +73,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         queryWrapper.eq(User::getId, id);
         User user = this.getOne(queryWrapper);
         return Result.success(user.toString());
+    }
+
+    /**
+     * 获取用户分页数据
+     *
+     * @param pageNum
+     * @param pageSize
+     * @return 分页数据
+     */
+    @Override
+    public Result<Object> getUserPage(Integer pageNum, Integer pageSize) {
+        Page<User> page = new Page<>(pageNum, pageSize);
+        Page<User> userPage = userMapper.selectPage(page, null);
+        return Result.success(userPage);
     }
 }

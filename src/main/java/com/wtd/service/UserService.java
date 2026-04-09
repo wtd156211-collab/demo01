@@ -27,4 +27,12 @@ public interface UserService extends IService<User> {
      * @return
      */
     Result<String> getUserById(Long id);
+
+    /**
+     * 获取用户分页数据
+     * @param pageNum
+     * @param pageSize
+     * @return  分页数据
+     */
+    Result<Object> getUserPage(Integer pageNum, Integer pageSize);
 }

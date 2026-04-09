@@ -70,4 +70,15 @@ public class UserController {
         userService.login(user);
         return Result.success(data);
     }
+
+    /**
+     * 获取用户分页数据
+     * @return
+     */
+    @GetMapping("/page")
+    public Result<Object> getUserPage(@RequestParam(defaultValue = "1") Integer pageNum,
+                                      @RequestParam(defaultValue = "5") Integer pageSize) {
+        log.info("正在查询第" + pageNum + "页,每页" + pageSize + "条数据");
+        return userService.getUserPage(pageNum, pageSize);
+    }
 }
