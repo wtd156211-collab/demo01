@@ -3,7 +3,9 @@ package com.wtd.controller;
 import com.wtd.common.Result;
 import com.wtd.dto.UserDTO;
 import com.wtd.entity.User;
+import com.wtd.entity.UserInfo;
 import com.wtd.service.UserService;
+import com.wtd.vo.UserDetailVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -21,10 +23,9 @@ public class UserController {
      * @return
      */
     @GetMapping("/{id}")
-    public Result<String> getUserInfo(@PathVariable("id") Long id) {
+    public Result<User> getUserInfo(@PathVariable("id") Long id) {
         log.info("正在查询ID为" + id + "的用户信息");
-        String data="获取成功，正在查询ID为" + id + "的用户信息";
-        return Result.success(data);
+        return userService.getUserById(id);
     }
     /**
      * 新增用户
@@ -44,20 +45,7 @@ public class UserController {
      @PutMapping("/{id}")
     public Result<String> updateUser(@PathVariable Long id, @RequestBody User user) {
          log.info("正在更新ID为" + id + "的用户信息");
-         String data="更新成功,ID为" + id + "的用户信息已更新为:" + user.toString();
-        return Result.success(data);
-    }
-    /**
-     * 删除用户信息
-     * @return
-     */
-    @DeleteMapping("/{id}")
-    public Result<String> deleteUser(@PathVariable Long id) {
-        int i = 1 / 0;
-        log.info("测试异常处理");
-        log.info("正在删除ID为" + id + "的用户信息");
-        String data="删除成功,ID为" + id + "的用户信息已删除";
-        return Result.success(data);
+         return userService.updateUser(id, user);
     }
     /**
      * 用户登录
@@ -66,9 +54,8 @@ public class UserController {
     @PostMapping("/login")
     public Result<String> login(@RequestBody UserDTO user) {
         log.info("接收到用户登录信息:" + user.getUsername() + " " + user.getPassword());
-        String data="登录成功,接收到用户登录信息:" + user.getUsername() + " " + user.getPassword();
-        userService.login(user);
-        return Result.success(data);
+        String token = userService.login(user);
+        return Result.success(token);
     }
 
     /**
@@ -80,5 +67,37 @@ public class UserController {
                                       @RequestParam(defaultValue = "5") Integer pageSize) {
         log.info("正在查询第" + pageNum + "页,每页" + pageSize + "条数据");
         return userService.getUserPage(pageNum, pageSize);
+    }
+
+    /**
+     * 查询用户详情（多表联查 + Redis）
+     * @return
+     */
+    @GetMapping("/{id}/detail")
+    public Result<UserDetailVO> getUserDetail(@PathVariable("id") Long userId) {
+        return userService.getUserDetail(userId);
+    }
+
+    /**
+     * 更新用户扩展信息
+     * @return
+     */
+    @PutMapping("/{id}/detail")
+    public Result<String> updateUserInfo(@PathVariable("id") Long userId,
+                                         @RequestBody UserInfo userInfo) {
+        if (userInfo == null) {
+            userInfo = new UserInfo();
+        }
+        userInfo.setUserId(userId);
+        return userService.updateUserInfo(userInfo);
+    }
+
+    /**
+     * 删除用户
+     * @return
+     */
+    @DeleteMapping("/{id}")
+    public Result<String> deleteUserById(@PathVariable("id") Long userId) {
+        return userService.deleteUser(userId);
     }
 }
