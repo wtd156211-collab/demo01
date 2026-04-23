@@ -11,6 +11,7 @@ import com.wtd.entity.User;
 import com.wtd.entity.UserInfo;
 import com.wtd.mapper.UserInfoMapper;
 import com.wtd.mapper.UserMapper;
+import com.wtd.security.JwtUtil;
 import com.wtd.service.UserService;
 import com.wtd.vo.UserDetailVO;
 import org.springframework.beans.BeanUtils;
@@ -34,6 +35,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
 
     /**
      * 新增用户
@@ -74,7 +79,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new RuntimeException(ResultCode.PASSWORD_ERROR.getMsg());
         }
 
-        return "token-" + user.getUsername() + "-" + System.currentTimeMillis();
+        String jwt = jwtUtil.generateToken(user.getUsername());
+        return jwt;
+
     }
 
     /**

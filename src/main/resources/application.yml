@@ -21,3 +21,7 @@ mybatis-plus:
       id-type: auto   #id生成策略为自增
   configuration:
     map-underscore-to-camel-case: true
+security:
+  jwt:
+    secret: demo-jwt-secret-key-for-spring-security-2026
+    expiration-millis: 7200000
