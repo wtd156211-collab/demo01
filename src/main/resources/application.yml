@@ -11,6 +11,14 @@ spring:
       host: 127.0.0.1
       port: 6379
       database: 0
+  ai:
+    deepseek:
+      api-key: ${DEEPSEEK_API_KEY:}
+      base-url: https://api.deepseek.com
+      chat:
+        options:
+          model: deepseek-v4-flash
+          temperature: 0.7
 # MyBatisPlus配置
 mybatis-plus:
   # 配置mapper的扫描，找到所有的mapper.xml映射文件
@@ -25,3 +33,4 @@ security:
   jwt:
     secret: demo-jwt-secret-key-for-spring-security-2026
     expiration-millis: 7200000
+
