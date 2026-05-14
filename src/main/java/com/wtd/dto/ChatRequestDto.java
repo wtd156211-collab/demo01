@@ -5,6 +5,9 @@ import lombok.Data;
 
 @Data
 public class ChatRequestDto {
+    @NotBlank(message = "会话编号不能为空")
+    private String sessionId;
+
     @NotBlank(message = "问题不能为空")
     private String message;
 

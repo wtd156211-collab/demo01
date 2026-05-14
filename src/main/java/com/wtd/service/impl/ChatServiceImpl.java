@@ -1,46 +1,81 @@
 package com.wtd.service.impl;
 
 import com.wtd.config.DeepSeekProperties;
+import com.wtd.dto.ChatRequestDto;
+import com.wtd.entity.ChatRecord;
 import com.wtd.service.ChatService;
 import com.wtd.vo.ChatResponseVo;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 public class ChatServiceImpl implements ChatService {
 
     private static final Set<String> SUPPORTED_MODELS = Set.of("deepseek-v4-flash", "deepseek-v4-pro");
+    private static final String CHAT_SESSION_KEY_PREFIX = "chat:session:";
+    private static final int HISTORY_ROUNDS = 3;
+    private static final long SESSION_TTL_HOURS = 24;
 
     private final RestClient restClient;
     private final DeepSeekProperties deepSeekProperties;
+    private final StringRedisTemplate stringRedisTemplate;
 
-    public ChatServiceImpl(DeepSeekProperties deepSeekProperties) {
+    public ChatServiceImpl(DeepSeekProperties deepSeekProperties, StringRedisTemplate stringRedisTemplate) {
         this.deepSeekProperties = deepSeekProperties;
+        this.stringRedisTemplate = stringRedisTemplate;
+
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofSeconds(10));
+        requestFactory.setReadTimeout(Duration.ofSeconds(120));
+
         this.restClient = RestClient.builder()
                 .baseUrl(trimTrailingSlash(deepSeekProperties.getBaseUrl()))
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + deepSeekProperties.getApiKey())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .requestFactory(requestFactory)
                 .build();
     }
 
-    @Override
-    public ChatResponseVo chat(String message, String model) {
+    @PostConstruct
+    private void validateConfig() {
         if (deepSeekProperties.getApiKey() == null || deepSeekProperties.getApiKey().isBlank()) {
-            throw new IllegalStateException("未读取到 DEEPSEEK_API_KEY 环境变量，请先配置后再启动项目");
+            throw new IllegalStateException("未读取到 DEEPSEEK_API_KEY 环境变量，请在配置中设置后再启动项目");
         }
+        log.info("DeepSeek 配置校验通过, baseUrl={}, model={}",
+                deepSeekProperties.getBaseUrl(), deepSeekProperties.getChat().getOptions().getModel());
+    }
 
-        String actualModel = resolveModel(model);
+    @Override
+    public ChatResponseVo chat(ChatRequestDto requestDto) {
+        String sessionId = requestDto.getSessionId().trim();
+        String message = requestDto.getMessage().trim();
+        String actualModel = resolveModel(requestDto.getModel());
+
+        List<String> historyRecords = readRecentHistory(sessionId);
+        String finalPrompt = buildPrompt(historyRecords, message);
+
         DeepSeekRequest request = new DeepSeekRequest(
                 actualModel,
                 List.of(
-                        new DeepSeekMessage("system", "你是一名专业、友好、简洁的中文智能助手，请根据用户的问题直接给出清晰回答。"),
-                        new DeepSeekMessage("user", message)
+                        new DeepSeekMessage("system", "你是一名专业、友好、简洁的中文智能助手。回答时请结合历史对话上下文，保持同一会话的连续性。"),
+                        new DeepSeekMessage("user", finalPrompt)
                 ),
                 deepSeekProperties.getChat().getOptions().getTemperature()
         );
@@ -49,10 +84,60 @@ public class ChatServiceImpl implements ChatService {
                 .uri("/chat/completions")
                 .body(request)
                 .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {
+                    String body = new String(res.getBody().readAllBytes());
+                    log.warn("DeepSeek API 客户端错误, status={}, body={}", res.getStatusCode(), body);
+                    throw new IllegalStateException("请求 DeepSeek 失败（" + res.getStatusCode() + "），请检查配置或稍后重试");
+                })
+                .onStatus(HttpStatusCode::is5xxServerError, (req, res) -> {
+                    log.warn("DeepSeek API 服务端错误, status={}", res.getStatusCode());
+                    throw new IllegalStateException("DeepSeek 服务暂时不可用，请稍后重试");
+                })
                 .body(DeepSeekResponse.class);
 
         String answer = extractAnswer(response);
-        return new ChatResponseVo(message, answer);
+        saveCurrentRound(sessionId, message, answer);
+        return new ChatResponseVo(sessionId, message, answer);
+    }
+
+    private List<String> readRecentHistory(String sessionId) {
+        String redisKey = buildRedisKey(sessionId);
+        try {
+            List<String> records = stringRedisTemplate.opsForList().range(redisKey, -HISTORY_ROUNDS, -1);
+            return records == null ? List.of() : records;
+        } catch (DataAccessException ex) {
+            log.warn("读取 Redis 聊天历史失败, sessionId={}", sessionId, ex);
+            return List.of();
+        }
+    }
+
+    private void saveCurrentRound(String sessionId, String message, String answer) {
+        String redisKey = buildRedisKey(sessionId);
+        ChatRecord chatRecord = new ChatRecord(sessionId, message, answer, LocalDateTime.now());
+
+        try {
+            stringRedisTemplate.opsForList().rightPush(redisKey, chatRecord.toPromptText());
+            stringRedisTemplate.opsForList().trim(redisKey, -HISTORY_ROUNDS, -1);
+            stringRedisTemplate.expire(redisKey, SESSION_TTL_HOURS, TimeUnit.HOURS);
+        } catch (DataAccessException ex) {
+            log.warn("写入 Redis 聊天历史失败, sessionId={}", sessionId, ex);
+        }
+    }
+
+    private String buildPrompt(List<String> historyRecords, String message) {
+        if (historyRecords.isEmpty()) {
+            return "当前用户问题:\n" + message;
+        }
+
+        List<String> promptParts = new ArrayList<>();
+        promptParts.add("以下是历史对话:");
+        promptParts.add(String.join("\n\n", historyRecords));
+        promptParts.add("当前用户问题:\n" + message);
+        return String.join("\n\n", promptParts);
+    }
+
+    private String buildRedisKey(String sessionId) {
+        return CHAT_SESSION_KEY_PREFIX + sessionId;
     }
 
     private String resolveModel(String requestModel) {
@@ -62,7 +147,7 @@ public class ChatServiceImpl implements ChatService {
         }
 
         if (!SUPPORTED_MODELS.contains(requestModel)) {
-            throw new IllegalArgumentException("当前仅支持模型: deepseek-v4-flash, deepseek-v4-pro");
+            throw new IllegalArgumentException("当前仅支持模型 deepseek-v4-flash, deepseek-v4-pro");
         }
 
         return requestModel;

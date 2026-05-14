@@ -24,8 +24,9 @@ public class ChatController {
 
     @PostMapping
     public Result<ChatResponseVo> chat(@Valid @RequestBody ChatRequestDto requestDto) {
-        log.info("收到聊天请求, model={}, message={}", requestDto.getModel(), requestDto.getMessage());
-        ChatResponseVo responseVo = chatService.chat(requestDto.getMessage(), requestDto.getModel());
+        log.info("收到聊天请求, sessionId={}, model={}, message={}",
+                requestDto.getSessionId(), requestDto.getModel(), requestDto.getMessage());
+        ChatResponseVo responseVo = chatService.chat(requestDto);
         return Result.success(responseVo);
     }
 }
